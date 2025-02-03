@@ -1,12 +1,12 @@
 from django.db import models
-from chores import generate_unique_id
+from cr.chores.chores import generate_unique_id
 from django.db import models
 from django.contrib.auth.models import User
-from datetime import timezone
+from django.utils import timezone
 
 class Company(models.Model):
     alias_id =  models.CharField(default=generate_unique_id, max_length=10, unique=True, editable=False)
-    company_name = models.CharField()
+    company_name = models.TextField()
     email = models.EmailField(unique=True)
     mobile = models.TextField(null=False)
     version = models.IntegerField(default=0)
