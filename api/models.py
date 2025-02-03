@@ -1,5 +1,36 @@
 from django.db import models
+from chores import generate_unique_id
+from django.db import models
 from django.contrib.auth.models import User
+from datetime import timezone
+
+class Company(models.Model):
+    alias_id =  models.CharField(default=generate_unique_id, max_length=10, unique=True, editable=False)
+    company_name = models.CharField()
+    email = models.EmailField(unique=True)
+    mobile = models.TextField(null=False)
+    version = models.IntegerField(default=0)
+    created_at = models.DateTimeField(default=timezone.now)
+
+
+    def __str__(self):
+        return f"{self.name}"
+    
+class Branch(models.Model):
+    alias_id =  models.CharField(default=generate_unique_id, max_length=10, unique=True, editable=False)
+    name = models.TextField(blank=False, null=False)
+    company = models.ForeignKey(Company, on_delete=models.PROTECT)
+    version = models.IntegerField(default=0)
+    created_at = models.DateTimeField(default=timezone.now)
+    
+    class Meta:
+        db_table = "branch"
+        verbose_name = "branch"
+        verbose_name_plural = "branches"
+    
+    def __str__(self):
+        return f"{self.name}"
+    
 
 class CreditSale(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)

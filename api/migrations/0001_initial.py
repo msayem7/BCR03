@@ -37,3 +37,14 @@ class Migration(migrations.Migration):
             ],
         ),
     ]
+
+def insert_initial_data(apps, schema_editor):
+    #company
+    Company = apps.get_model('api', 'Company')
+    Company.objects.create(company_name='PMA'0, email  ='info@pma.com', mobile='00000355355')
+
+    #Branch
+    Branch = apps.get_model('api', 'Branch')
+    Branch.objects.create( name  ='Main', company= 1 )
+
+    Company = apps.get_model('api', 'Company')
