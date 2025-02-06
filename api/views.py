@@ -1,7 +1,15 @@
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
-from .models import CreditSale, ChequeReceivable
-from .serializers import CreditSaleSerializer, ChequeReceivableSerializer
+from .models import Company, Branch, CreditSale, ChequeReceivable
+from .serializers import CompanySerializer, BranchSerializer, CreditSaleSerializer, ChequeReceivableSerializer
+
+class CompanyViewSet(viewsets.ModelViewSet):
+    queryset= Company.objects.all()
+    serializer_class= CompanySerializer
+
+class BranchViewSet(viewsets.ModelViewSet):
+    queryset= Branch.objects.all()
+    serializer_class= BranchSerializer
 
 class CreditSaleViewSet(viewsets.ModelViewSet):
     queryset = CreditSale.objects.all()
