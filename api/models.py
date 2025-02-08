@@ -1,5 +1,5 @@
 from django.db import models
-from cr.chores.chores import generate_unique_id
+from cr.chores.chores import generate_unique_id, generate_alias_id
 from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
@@ -51,3 +51,28 @@ class ChequeReceivable(models.Model):
 
     def __str__(self):
         return f"Cheque {self.cheque_number} for {self.amount}"
+
+
+class Organization(models.Model):
+    alias_id = models.CharField(
+        max_length=10,
+        unique=True,
+        editable=False,
+        default=generate_alias_id
+    )
+    name = models.CharField(max_length=255)
+    is_mother_company = models.BooleanField(default=False)
+    mother_company = models.ForeignKey(
+        'self',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='child_companies' 
+    )
+    address = models.TextField(blank=True, null=True)
+    phone = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name

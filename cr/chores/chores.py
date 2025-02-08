@@ -6,3 +6,6 @@ def generate_unique_id():
     unique_string = str(time.time()) + str(random.randint(0, 1000000))
     return hashlib.sha256(unique_string.encode()).hexdigest()[:10]
 
+def generate_alias_id():
+    unique_string = f"{time.time()}{random.randint(0, 1000000)}"
+    return hashlib.sha256(unique_string.encode()).hexdigest()[:10]
