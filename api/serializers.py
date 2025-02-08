@@ -1,5 +1,6 @@
 from rest_framework import serializers
-from .models import Company, Branch, CreditSale, ChequeReceivable
+from .models import Company, Branch, CreditSale, ChequeReceivable, Organization
+
 
 class CompanySerializer(serializers.ModelSerializer):
     alias_id = serializers.CharField(read_only=True)
@@ -34,3 +35,22 @@ class ChequeReceivableSerializer(serializers.ModelSerializer):
     class Meta:
         model = ChequeReceivable
         fields = '__all__'
+
+#-----------------------------
+class OrganizationSerializer(serializers.ModelSerializer):
+    mother_company = serializers.SlugRelatedField(
+        slug_field='alias_id',
+        queryset=Organization.objects.all(),
+        required=False,
+        allow_null=True
+    )
+    mother_company_name = serializers.CharField(source='mother_company.name', read_only=True)
+
+    class Meta:
+        model = Organization
+        fields = ['alias_id', 'name', 'is_mother_company', 'mother_company', 
+                 'mother_company_name', 'address', 'phone', 'created_at', 'updated_at']
+        read_only_fields = ['alias_id', 'created_at', 'updated_at']
+        extra_kwargs = {
+            'mother_company': {'required': False}
+        }
