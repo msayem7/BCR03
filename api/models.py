@@ -13,8 +13,9 @@ class Company(models.Model):
     created_at = models.DateTimeField(default=timezone.now)
 
 
+    
     def __str__(self):
-        return f"{self.name}"
+        return f"{self.company_name}"  # Use correct field name 
     
 class Branch(models.Model):
     alias_id =  models.CharField(default=generate_unique_id, max_length=10, unique=True, editable=False)
@@ -53,21 +54,22 @@ class ChequeReceivable(models.Model):
         return f"Cheque {self.cheque_number} for {self.amount}"
 
 
-class Organization(models.Model):
-    alias_id = models.CharField(
+class Customer(models.Model):
+    alias_id = models.TextField(
         max_length=10,
         unique=True,
         editable=False,
         default=generate_alias_id
     )
-    name = models.CharField(max_length=255)
-    is_mother_company = models.BooleanField(default=False)
-    mother_company = models.ForeignKey(
+    
+    name = models.TextField()
+    is_parent = models.BooleanField(default=False)
+    parent = models.ForeignKey(
         'self',
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='child_companies' 
+        related_name='children' 
     )
     address = models.TextField(blank=True, null=True)
     phone = models.TextField(blank=True, null=True)
@@ -76,3 +78,4 @@ class Organization(models.Model):
 
     def __str__(self):
         return self.name
+    

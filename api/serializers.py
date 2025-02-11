@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Company, Branch, CreditSale, ChequeReceivable, Organization
+from .models import Company, Branch, CreditSale, ChequeReceivable, Customer
 
 
 class CompanySerializer(serializers.ModelSerializer):
@@ -37,20 +37,22 @@ class ChequeReceivableSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 #-----------------------------
-class OrganizationSerializer(serializers.ModelSerializer):
-    mother_company = serializers.SlugRelatedField(
+class CustomerSerializer(serializers.ModelSerializer):
+
+    parent = serializers.SlugRelatedField(
         slug_field='alias_id',
-        queryset=Organization.objects.all(),
+        queryset=Customer.objects.all(),
         required=False,
         allow_null=True
     )
-    mother_company_name = serializers.CharField(source='mother_company.name', read_only=True)
+    parent_name = serializers.CharField(source='parent.name', read_only=True)
 
     class Meta:
-        model = Organization
-        fields = ['alias_id', 'name', 'is_mother_company', 'mother_company', 
-                 'mother_company_name', 'address', 'phone', 'created_at', 'updated_at']
+        model = Customer
+        fields = ['alias_id','branch' 'name', 'is_parent', 'parent'
+                  , 'parent_name', 'address', 'phone', 'created_at', 'updated_at']
         read_only_fields = ['alias_id', 'created_at', 'updated_at']
-        extra_kwargs = {
-            'mother_company': {'required': False}
-        }
+        
+        # extra_kwargs = {
+        #     'parent': {'required': False}
+        # }
