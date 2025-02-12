@@ -1,16 +1,28 @@
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
-from .models import Company, Branch, CreditSale, ChequeReceivable, Customer
-from .serializers import CompanySerializer, BranchSerializer, CreditSaleSerializer, ChequeReceivableSerializer, CustomerSerializer
-
+from .models import Company, Branch, CreditSale, ChequeReceivable, Customer, Branch
+from .serializers import (CompanySerializer, BranchSerializer, CreditSaleSerializer,
+                          ChequeReceivableSerializer, CustomerSerializer)
 
 class CompanyViewSet(viewsets.ModelViewSet):
     queryset= Company.objects.all()
     serializer_class= CompanySerializer
 
 class BranchViewSet(viewsets.ModelViewSet):
-    queryset= Branch.objects.all()
-    serializer_class= BranchSerializer
+    serializer_class = BranchSerializer
+    queryset = Branch.objects.all()
+    permission_classes = [IsAuthenticated]
+    lookup_field = 'alias_id'
+
+    def get_queryset(self):
+        return self.queryset
+
+    def perform_create(self, serializer):
+        
+        serializer.save(updated_by=self.request.user)
+
+    def perform_update(self, serializer):
+        serializer.save(updated_by=self.request.user)
 
 class CreditSaleViewSet(viewsets.ModelViewSet):
     queryset = CreditSale.objects.all()
@@ -22,6 +34,7 @@ class CreditSaleViewSet(viewsets.ModelViewSet):
     #.filter(user=self.request.user)
 
     def perform_create(self, serializer):
+        print(self.request).data
         serializer.save(user=self.request.user)
 
 class ChequeReceivableViewSet(viewsets.ModelViewSet):
