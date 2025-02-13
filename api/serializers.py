@@ -13,6 +13,7 @@ class CompanySerializer(serializers.ModelSerializer):
 from rest_framework import serializers
 from .models import Branch
 
+
 class BranchSerializer(serializers.ModelSerializer):
     parent = serializers.SlugRelatedField(
         slug_field='alias_id',
@@ -21,29 +22,18 @@ class BranchSerializer(serializers.ModelSerializer):
         allow_null=True
     )
     branch_type = serializers.IntegerField()
-    version = serializers.IntegerField(read_only=True)
-    alias_id = serializers.SlugField(read_only=True)
-
+    
     class Meta:
         model = Branch
-        fields = ['alias_id', 'name', 'parent', 'branch_type', 
-                 'address', 'contact', 'version']
+        fields = [
+            'alias_id', 'name', 'parent', 'branch_type',
+            'address', 'contact', 'version'
+        ]
+        read_only_fields = ['alias_id', 'version']
         lookup_field = 'alias_id'
-        #read_only_fields = ['alias_id', 'created_at', 'updated_at']
-        extra_kwargs = {'url': {'lookup_field': 'alias_id'}}
-
-    def create(self, validated_data):
-        validated_data['updated_by'] = self.context['request'].user
-        return super().create(validated_data)
-
-    def update(self, instance, validated_data):
-        if instance.version != validated_data.get('version'):
-            raise serializers.ValidationError(
-                {'version': 'This branch has been modified. Please refresh.'}
-            )
-        validated_data['updated_by'] = self.context['request'].user
-        return super().update(instance, validated_data)
-
+        extra_kwargs = {
+            'url': {'lookup_field': 'alias_id'}
+        }
         
 # class BranchSerializer(serializers.ModelSerializer):
 #     alias_id = serializers.CharField(read_only=True)
@@ -85,8 +75,8 @@ class CustomerSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Customer
-        fields = ['alias_id','branch' 'name', 'is_parent', 'parent'
-                  , 'parent_name', 'address', 'phone', 'created_at', 'updated_at']
+        fields = ['alias_id', 'name', 'is_parent', 'parent'
+                  , 'parent_name','grace_days', 'address', 'phone', 'created_at', 'updated_at']
         read_only_fields = ['alias_id', 'created_at', 'updated_at']
         
         # extra_kwargs = {

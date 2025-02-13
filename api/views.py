@@ -3,6 +3,8 @@ from rest_framework.permissions import IsAuthenticated
 from .models import Company, Branch, CreditSale, ChequeReceivable, Customer, Branch
 from .serializers import (CompanySerializer, BranchSerializer, CreditSaleSerializer,
                           ChequeReceivableSerializer, CustomerSerializer)
+from rest_framework.response import Response
+from django.db import transaction
 
 class CompanyViewSet(viewsets.ModelViewSet):
     queryset= Company.objects.all()
@@ -14,20 +16,63 @@ class BranchViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     lookup_field = 'alias_id'
 
-    def get_queryset(self):
-        return self.queryset
+    def update(self, request, *args, **kwargs):
+
+        client_version = request.data.get('version')
+        with transaction.atomic():            
+            instance = self.get_object()
+
+            # Concurrency check
+            if instance.version != client_version:
+                return Response(
+                    {'version': 'This branch has been modified by another user. Please refresh.'},
+                    status=status.HTTP_409_CONFLICT
+                )
+
+            # Increment version
+            new_version = instance.version + 1
+
+            # Partial update handling
+            partial = kwargs.pop('partial', False)
+            serializer = self.get_serializer(
+                instance, 
+                data=request.data, 
+                partial=partial
+            )
+            serializer.is_valid(raise_exception=True)
+            
+            # Save with updated information
+            serializer.save(
+                updated_by=request.user,
+                version=new_version
+            )
+
+            return Response(serializer.data)
 
     def perform_create(self, serializer):
-        
         serializer.save(updated_by=self.request.user)
 
-    def perform_update(self, serializer):
-        serializer.save(updated_by=self.request.user)
+
+# # views.py
+class CustomerViewSet(viewsets.ModelViewSet):
+    queryset = Customer.objects.all()
+    serializer_class = CustomerSerializer
+    permission_classes = [IsAuthenticated]
+    lookup_field = 'alias_id'
+    lookup_url_kwarg = 'alias_id'
+    filterset_fields = ['is_parent', 'parent']
+
+    def create(self, request, *args, **kwargs):
+        # alias_id = 'test'
+        # request.data.pop('alias_id', alias_id)
+        # print(alias_id, request.data)
+        return super().create(request, *args, **kwargs)
+    
 
 class CreditSaleViewSet(viewsets.ModelViewSet):
     queryset = CreditSale.objects.all()
     serializer_class = CreditSaleSerializer
-    # permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         return CreditSale.objects.all()
@@ -62,17 +107,3 @@ class ChequeReceivableViewSet(viewsets.ModelViewSet):
 #     filterset_class = OrganizationFilter
 #     filter_backends = [filters.DjangoFilterBackend]
 
-
-# # views.py
-class CustomerViewSet(viewsets.ModelViewSet):
-    queryset = Customer.objects.all()
-    serializer_class = CustomerSerializer
-    lookup_field = 'alias_id'
-    lookup_url_kwarg = 'alias_id'
-    filterset_fields = ['is_parent', 'parent']
-
-    def create(self, request, *args, **kwargs):
-        # alias_id = 'test'
-        # request.data.pop('alias_id', alias_id)
-        # print(alias_id, request.data)
-        return super().create(request, *args, **kwargs)
