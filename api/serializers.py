@@ -1,5 +1,6 @@
 from rest_framework import serializers
-from .models import Company, Branch, CreditSale, ChequeReceivable, Customer
+from .models import (Company, Branch, CreditSale, ChequeReceivable, 
+                     Customer, CreditInvoice)
 
 
 class CompanySerializer(serializers.ModelSerializer):
@@ -13,6 +14,7 @@ class CompanySerializer(serializers.ModelSerializer):
 from rest_framework import serializers
 from .models import Branch
 
+
 class BranchSerializer(serializers.ModelSerializer):
     parent = serializers.SlugRelatedField(
         slug_field='alias_id',
@@ -21,52 +23,19 @@ class BranchSerializer(serializers.ModelSerializer):
         allow_null=True
     )
     branch_type = serializers.IntegerField()
-    version = serializers.IntegerField(read_only=True)
-    alias_id = serializers.SlugField(read_only=True)
-
+    
     class Meta:
         model = Branch
-        fields = ['alias_id', 'name', 'parent', 'branch_type', 
-                 'address', 'contact', 'version']
+        fields = [
+            'alias_id', 'name', 'parent', 'branch_type',
+            'address', 'contact', 'version'
+        ]
+        read_only_fields = ['alias_id', 'version']
         lookup_field = 'alias_id'
-        #read_only_fields = ['alias_id', 'created_at', 'updated_at']
-        extra_kwargs = {'url': {'lookup_field': 'alias_id'}}
-
-    def create(self, validated_data):
-        validated_data['updated_by'] = self.context['request'].user
-        return super().create(validated_data)
-
-    def update(self, instance, validated_data):
-        if instance.version != validated_data.get('version'):
-            raise serializers.ValidationError(
-                {'version': 'This branch has been modified. Please refresh.'}
-            )
-        validated_data['updated_by'] = self.context['request'].user
-        return super().update(instance, validated_data)
-
-        
-# class BranchSerializer(serializers.ModelSerializer):
-#     alias_id = serializers.CharField(read_only=True)
-#     version = serializers.IntegerField(read_only=True)
-#     company_alias_id = serializers.CharField(write_only=True)
-#     company = serializers.PrimaryKeyRelatedField(read_only=True)
-
-#     class Meta:
-#         model = Branch
-#         fields = ['alias_id', 'name', 'company_alias_id', 'company', 'version']
-
-#     def create(self, validated_data):
-#         company_alias_id = validated_data.pop('company_alias_id')
-#         company = Company.objects.get(alias_id=company_alias_id)
-#         branch = Branch.objects.create(company=company, **validated_data)
-#         return branch
-    
-    
-class CreditSaleSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = CreditSale
-        fields = '__all__'
-
+        extra_kwargs = {
+            'url': {'lookup_field': 'alias_id'}
+        }
+   
 class ChequeReceivableSerializer(serializers.ModelSerializer):
     class Meta:
         model = ChequeReceivable
@@ -85,10 +54,38 @@ class CustomerSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Customer
-        fields = ['alias_id','branch' 'name', 'is_parent', 'parent'
-                  , 'parent_name', 'address', 'phone', 'created_at', 'updated_at']
+        fields = ['alias_id', 'name', 'is_parent', 'parent'
+                  , 'parent_name','grace_days', 'address', 'phone', 'created_at', 'updated_at']
         read_only_fields = ['alias_id', 'created_at', 'updated_at']
         
         # extra_kwargs = {
         #     'parent': {'required': False}
         # }
+        
+class CreditInvoiceSerializer(serializers.ModelSerializer):
+    branch = serializers.SlugRelatedField(slug_field='alias_id', queryset=Branch.objects.all())
+    customer = serializers.SlugRelatedField(slug_field='alias_id', queryset=Customer.objects.all())
+    payment_grace_days = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model = CreditInvoice
+        fields = '__all__'
+        read_only_fields = ('alias_id', 'version', 'updated_at', 'updated_by')
+
+    def create(self, validated_data):
+        validated_data['payment_grace_days'] = validated_data['customer'].grace_days
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        # for edit case, data will remain unchanged. 
+        # if 'customer' in validated_data:
+        #     validated_data['payment_grace_days'] = validated_data['customer'].grace_days 
+        return super().update(instance, validated_data)
+    
+
+
+    
+class CreditSaleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CreditSale
+        fields = '__all__'
