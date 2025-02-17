@@ -86,6 +86,10 @@ CORS_ALLOWED_ORIGINS = [
 
 ROOT_URLCONF = 'cr.urls'
 
+#to store media files
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
