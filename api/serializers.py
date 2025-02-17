@@ -1,8 +1,18 @@
 from rest_framework import serializers
 from .models import (Company, Branch, CreditSale, ChequeReceivable, 
                      Customer, CreditInvoice)
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
-
+class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    def validate(self, attrs):
+        data = super().validate(attrs)
+        data['user'] = {
+            'id': self.user.id,
+            'username': self.user.username,
+            'email': self.user.email
+        }
+        return data
+    
 class CompanySerializer(serializers.ModelSerializer):
     alias_id = serializers.CharField(read_only=True)
 
@@ -28,10 +38,12 @@ class BranchSerializer(serializers.ModelSerializer):
         model = Branch
         fields = [
             'alias_id', 'name', 'parent', 'branch_type',
-            'address', 'contact', 'version'
+            'address', 'contact','updated_at', 'version'
         ]
         read_only_fields = ['alias_id', 'version']
+
         lookup_field = 'alias_id'
+
         extra_kwargs = {
             'url': {'lookup_field': 'alias_id'}
         }
@@ -63,24 +75,29 @@ class CustomerSerializer(serializers.ModelSerializer):
         # }
         
 class CreditInvoiceSerializer(serializers.ModelSerializer):
+
     branch = serializers.SlugRelatedField(slug_field='alias_id', queryset=Branch.objects.all())
     customer = serializers.SlugRelatedField(slug_field='alias_id', queryset=Customer.objects.all())
     payment_grace_days = serializers.IntegerField(read_only=True)
-
+    customer_name = serializers.CharField(source='customer.name', read_only=True)
+    
     class Meta:
         model = CreditInvoice
-        fields = '__all__'
+        fields = ('alias_id', 'branch', 'invoice_no', 'customer','customer_name', 'transaction_date'
+                  ,'due_amount', 'payment_grace_days', 'status', 'version'
+                  )
         read_only_fields = ('alias_id', 'version', 'updated_at', 'updated_by')
 
     def create(self, validated_data):
         validated_data['payment_grace_days'] = validated_data['customer'].grace_days
         return super().create(validated_data)
 
-    def update(self, instance, validated_data):
-        # for edit case, data will remain unchanged. 
-        # if 'customer' in validated_data:
-        #     validated_data['payment_grace_days'] = validated_data['customer'].grace_days 
-        return super().update(instance, validated_data)
+    # def update(self, instance, validated_data):
+    #     if 'customer' in validated_data:
+    #         validated_data['payment_grace_days'] = validated_data['customer'].grace_days 
+
+    #     # validated_data['version'] = str(int(instance['version'])+1)
+    #     return super().update(instance, validated_data)
     
 
 

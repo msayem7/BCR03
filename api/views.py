@@ -2,14 +2,21 @@ from rest_framework import viewsets, status
 from rest_framework.response import Response
 from django.db import transaction, IntegrityError
 from rest_framework.permissions import IsAuthenticated
-from .models import Company, Branch,  Customer, Branch, CreditInvoice, CreditSale, ChequeReceivable
-from .serializers import (CompanySerializer, BranchSerializer, CreditSaleSerializer
-                          , CreditInvoiceSerializer, ChequeReceivableSerializer
-                          , CustomerSerializer)
+from .models import Company, Branch, Customer, CreditInvoice, CreditSale, ChequeReceivable
+from .serializers import (CustomTokenObtainPairSerializer, CompanySerializer, BranchSerializer, CreditSaleSerializer,
+                          CreditInvoiceSerializer, ChequeReceivableSerializer, CustomerSerializer)
+
+from rest_framework_simplejwt.views import TokenObtainPairView
+
+
+
+class CustomTokenObtainPairView(TokenObtainPairView):
+    serializer_class = CustomTokenObtainPairSerializer
+
 
 class CompanyViewSet(viewsets.ModelViewSet):
-    queryset= Company.objects.all()
-    serializer_class= CompanySerializer
+    queryset = Company.objects.all()
+    serializer_class = CompanySerializer
 
 class BranchViewSet(viewsets.ModelViewSet):
     serializer_class = BranchSerializer
@@ -18,15 +25,14 @@ class BranchViewSet(viewsets.ModelViewSet):
     lookup_field = 'alias_id'
 
     def update(self, request, *args, **kwargs):
-
-        client_version = request.data.get('version')
-        with transaction.atomic():            
+        with transaction.atomic():
+            client_version = int(request.data.get('version'))
             instance = self.get_object()
 
             # Concurrency check
             if instance.version != client_version:
                 return Response(
-                    {'version': 'This branch has been modified by another user. Please refresh.'},
+                    {'version': 'This branch has been modified by another user. Please refresh. current V, client_version v: ' + str(instance.version) + ' ' + str(client_version)},
                     status=status.HTTP_409_CONFLICT
                 )
 
@@ -35,26 +41,17 @@ class BranchViewSet(viewsets.ModelViewSet):
 
             # Partial update handling
             partial = kwargs.pop('partial', False)
-            serializer = self.get_serializer(
-                instance, 
-                data=request.data, 
-                partial=partial
-            )
+            serializer = self.get_serializer(instance, data=request.data, partial=partial)
             serializer.is_valid(raise_exception=True)
-            
+
             # Save with updated information
-            serializer.save(
-                updated_by=request.user,
-                version=new_version
-            )
+            serializer.save(updated_by=request.user, version=new_version)
 
             return Response(serializer.data)
 
     def perform_create(self, serializer):
         serializer.save(updated_by=self.request.user)
 
-
-# # views.py
 class CustomerViewSet(viewsets.ModelViewSet):
     queryset = Customer.objects.all()
     serializer_class = CustomerSerializer
@@ -64,11 +61,7 @@ class CustomerViewSet(viewsets.ModelViewSet):
     filterset_fields = ['is_parent', 'parent']
 
     def create(self, request, *args, **kwargs):
-        # alias_id = 'test'
-        # request.data.pop('alias_id', alias_id)
-        # print(alias_id, request.data)
         return super().create(request, *args, **kwargs)
-    
 
 class CreditSaleViewSet(viewsets.ModelViewSet):
     queryset = CreditSale.objects.all()
@@ -77,10 +70,8 @@ class CreditSaleViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         return CreditSale.objects.all()
-    #.filter(user=self.request.user)
 
     def perform_create(self, serializer):
-        print(self.request).data
         serializer.save(user=self.request.user)
 
 class ChequeReceivableViewSet(viewsets.ModelViewSet):
@@ -90,20 +81,16 @@ class ChequeReceivableViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         return ChequeReceivable.objects.filter(credit_sale__user=self.request.user)
-    
-
-
-
-#--------------------New-------------------
 
 class CreditInvoiceViewSet(viewsets.ModelViewSet):
     serializer_class = CreditInvoiceSerializer
     queryset = CreditInvoice.objects.all()
+    lookup_field = 'alias_id'
 
     def get_queryset(self):
         queryset = super().get_queryset()
         params = self.request.query_params
-        
+
         if branch := params.get('branch'):
             queryset = queryset.filter(branch__alias_id=branch)
         if date_from := params.get('transaction_date_after'):
@@ -120,10 +107,26 @@ class CreditInvoiceViewSet(viewsets.ModelViewSet):
 
     @transaction.atomic
     def update(self, request, *args, **kwargs):
+        # mutable_data = request.data.copy()
+        # mutable_data['version'] = int(request.data['version']) + 1
+
         instance = self.get_object()
-        if request.data.get('version') != instance.version:
+        if int(request.data.get('version')) != instance.version:
             return Response({'error': 'Version conflict'}, status=status.HTTP_409_CONFLICT)
-        return super().update(request, *args, **kwargs)
+        
+        partial = kwargs.pop('partial', False)
+        serializer = self.get_serializer(
+            instance, 
+            data=request.data,  # Use the modified copy
+            partial=partial
+        )
+        serializer.is_valid(raise_exception=True)
+    #     if 'customer' in validated_data:
+    #         validated_data['payment_grace_days'] = validated_data['customer'].grace_days 
+        serializer.save(updated_by=request.user, version=instance.version + 1)
+        
+        return Response(serializer.data)
+
 
     def list(self, request, *args, **kwargs):
         response = super().list(request, *args, **kwargs)
@@ -131,7 +134,4 @@ class CreditInvoiceViewSet(viewsets.ModelViewSet):
             response.headers['Last-Modified'] = latest.updated_at.strftime('%a, %d %b %Y %H:%M:%S GMT')
         return response
 
-class CustomerViewSet(viewsets.ModelViewSet):
-    serializer_class = CustomerSerializer
-    queryset = Customer.objects.all()
 

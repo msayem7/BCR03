@@ -33,10 +33,14 @@ class Branch(models.Model):
                                      default=BranchType.BRANCH)
     address = models.TextField(blank=True, null=True)
     contact = models.TextField(blank=True, null=True)
-    version = models.IntegerField(default=1)
     updated_at = models.DateTimeField(auto_now=True)
     updated_by = models.ForeignKey(User, on_delete=models.PROTECT,
                                   null=True, blank=True)
+    version = models.IntegerField(default=1)
+    
+    class Meta:
+        verbose_name = 'Branch'
+        verbose_name_plural = 'Branches'
 
     def __str__(self):
         return f"{self.name}"
@@ -82,12 +86,16 @@ class Customer(models.Model):
     phone = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = 'Customer'
+        verbose_name_plural = 'Customers'
 
     def __str__(self):
         return self.name
 
 class CreditInvoice(models.Model):
-    alias_id = models.TextField(default=generate_alias_id, max_length=10, unique=True, editable=False)
+    alias_id = models.TextField(default=generate_slugify_id(), max_length=10, unique=True, editable=False)
     branch = models.ForeignKey(Branch, on_delete=models.CASCADE, blank=False, null=False)
     invoice_no = models.TextField(blank=False, null=False)
     customer = models.ForeignKey(Customer, on_delete=models.PROTECT, blank=False, null=False)
@@ -102,6 +110,7 @@ class CreditInvoice(models.Model):
     updated_by = models.ForeignKey(User, on_delete=models.SET_NULL, related_name='branches', null=True)
     version = models.IntegerField(default=1)
 
+    
     class Meta:
         verbose_name = 'Credit Invoice'
         verbose_name_plural = 'Credit Invoices'
