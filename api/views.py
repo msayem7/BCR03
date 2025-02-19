@@ -2,9 +2,9 @@ from rest_framework import viewsets, status
 from rest_framework.response import Response
 from django.db import transaction, IntegrityError
 from rest_framework.permissions import IsAuthenticated
-from .models import Company, Branch, Customer, CreditInvoice, CreditSale, ChequeReceivable
-from .serializers import (CustomTokenObtainPairSerializer, CompanySerializer, BranchSerializer, CreditSaleSerializer,
-                          CreditInvoiceSerializer, ChequeReceivableSerializer, CustomerSerializer)
+from .models import Company, Branch, Customer, CreditInvoice
+from .serializers import (CustomTokenObtainPairSerializer, CompanySerializer, BranchSerializer, 
+                          CreditInvoiceSerializer, CustomerSerializer)
 
 from rest_framework_simplejwt.views import TokenObtainPairView
 
@@ -63,24 +63,6 @@ class CustomerViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         return super().create(request, *args, **kwargs)
 
-# class CreditSaleViewSet(viewsets.ModelViewSet):
-#     queryset = CreditSale.objects.all()
-#     serializer_class = CreditSaleSerializer
-#     permission_classes = [IsAuthenticated]
-
-#     def get_queryset(self):
-#         return CreditSale.objects.all()
-
-#     def perform_create(self, serializer):
-#         serializer.save(user=self.request.user)
-
-# class ChequeReceivableViewSet(viewsets.ModelViewSet):
-#     queryset = ChequeReceivable.objects.all()
-#     serializer_class = ChequeReceivableSerializer
-#     permission_classes = [IsAuthenticated]
-
-#     def get_queryset(self):
-#         return ChequeReceivable.objects.filter(credit_sale__user=self.request.user)
 
 class CreditInvoiceViewSet(viewsets.ModelViewSet):
     serializer_class = CreditInvoiceSerializer

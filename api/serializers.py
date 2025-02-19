@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import (Company, Branch, CreditSale, ChequeReceivable, 
+from .models import (Company, Branch, ChequeReceivable, 
                      Customer, CreditInvoice)
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
@@ -48,11 +48,6 @@ class BranchSerializer(serializers.ModelSerializer):
             'url': {'lookup_field': 'alias_id'}
         }
    
-class ChequeReceivableSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = ChequeReceivable
-        fields = '__all__'
-
 #-----------------------------
 class CustomerSerializer(serializers.ModelSerializer):
 
@@ -102,7 +97,3 @@ class CreditInvoiceSerializer(serializers.ModelSerializer):
 
 
     
-# class CreditSaleSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = CreditSale
-#         fields = '__all__'
