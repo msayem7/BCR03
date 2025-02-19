@@ -13,31 +13,6 @@ class Migration(migrations.Migration):
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
-    operations = [
-        migrations.CreateModel(
-            name='CreditSale',
-            fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('sale_date', models.DateField()),
-                ('amount', models.DecimalField(decimal_places=2, max_digits=10)),
-                ('description', models.TextField()),
-                ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),
-            ],
-        ),
-        migrations.CreateModel(
-            name='ChequeReceivable',
-            fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('cheque_number', models.CharField(max_length=50)),
-                ('bank_name', models.CharField(max_length=100)),
-                ('amount', models.DecimalField(decimal_places=2, max_digits=10)),
-                ('due_date', models.DateField()),
-                ('status', models.CharField(default='pending', max_length=20)),
-                ('credit_sale', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='api.creditsale')),
-            ],
-        ),
-    ]
-
 def insert_initial_data(apps, schema_editor):
     #company
     Company = apps.get_model('api', 'Company')
