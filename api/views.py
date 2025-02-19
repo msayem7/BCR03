@@ -63,24 +63,24 @@ class CustomerViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         return super().create(request, *args, **kwargs)
 
-class CreditSaleViewSet(viewsets.ModelViewSet):
-    queryset = CreditSale.objects.all()
-    serializer_class = CreditSaleSerializer
-    permission_classes = [IsAuthenticated]
+# class CreditSaleViewSet(viewsets.ModelViewSet):
+#     queryset = CreditSale.objects.all()
+#     serializer_class = CreditSaleSerializer
+#     permission_classes = [IsAuthenticated]
 
-    def get_queryset(self):
-        return CreditSale.objects.all()
+#     def get_queryset(self):
+#         return CreditSale.objects.all()
 
-    def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+#     def perform_create(self, serializer):
+#         serializer.save(user=self.request.user)
 
-class ChequeReceivableViewSet(viewsets.ModelViewSet):
-    queryset = ChequeReceivable.objects.all()
-    serializer_class = ChequeReceivableSerializer
-    permission_classes = [IsAuthenticated]
+# class ChequeReceivableViewSet(viewsets.ModelViewSet):
+#     queryset = ChequeReceivable.objects.all()
+#     serializer_class = ChequeReceivableSerializer
+#     permission_classes = [IsAuthenticated]
 
-    def get_queryset(self):
-        return ChequeReceivable.objects.filter(credit_sale__user=self.request.user)
+#     def get_queryset(self):
+#         return ChequeReceivable.objects.filter(credit_sale__user=self.request.user)
 
 class CreditInvoiceViewSet(viewsets.ModelViewSet):
     serializer_class = CreditInvoiceSerializer

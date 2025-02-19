@@ -102,7 +102,7 @@ class CreditInvoiceSerializer(serializers.ModelSerializer):
 
 
     
-class CreditSaleSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = CreditSale
-        fields = '__all__'
+# class CreditSaleSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = CreditSale
+#         fields = '__all__'

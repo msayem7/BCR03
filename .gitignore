@@ -1,4 +1,2 @@
 # Ignore database file
-db.sqlite3
-
-# Ignore migration files (if you prefer)
+**/db.sqlite3
