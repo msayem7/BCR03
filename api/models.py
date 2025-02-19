@@ -107,10 +107,9 @@ class CreditInvoice(models.Model):
     invoice_image = models.ImageField(upload_to='invoices/', null=True)
     status = models.BooleanField(default=True)
     updated_at = models.DateTimeField(auto_now=True)
-    updated_by = models.ForeignKey(User, on_delete=models.SET_NULL, related_name='branches', null=True)
+    updated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     version = models.IntegerField(default=1)
 
-    
     class Meta:
         verbose_name = 'Credit Invoice'
         verbose_name_plural = 'Credit Invoices'
