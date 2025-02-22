@@ -4,7 +4,8 @@ import random
 from django.utils.text import slugify
 import uuid;
 
-def generate_slugify_id():    return slugify(generate_alias_id())
+def generate_slugify_id():    
+    return slugify(generate_alias_id())
 
 def generate_alias_id():
     unique_string = f"{time.time()}{random.randint(0, 1000000)}"
