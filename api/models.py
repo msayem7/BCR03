@@ -50,7 +50,7 @@ class Customer(models.Model):
         max_length=10,
         unique=True,
         editable=False,
-        default=generate_alias_id
+        default=generate_alias_id()
     )
     name = models.TextField()
     is_parent = models.BooleanField(default=False)
@@ -75,7 +75,7 @@ class Customer(models.Model):
         return self.name
 
 class CreditInvoice(models.Model):
-    alias_id = models.TextField(default=generate_slugify_id(), max_length=10, unique=True, editable=False)
+    alias_id = models.TextField(default=generate_slugify_id, max_length=10, unique=True, editable=False)
     branch = models.ForeignKey(Branch, on_delete=models.CASCADE, blank=False, null=False)
     invoice_no = models.TextField(blank=False, null=False)
     customer = models.ForeignKey(Customer, on_delete=models.PROTECT, blank=False, null=False)
@@ -95,4 +95,54 @@ class CreditInvoice(models.Model):
         verbose_name_plural = 'Credit Invoices'
 
     def __str__(self):
-        return self.invoice_no + self.customer.name + str(self.due_amount)
+        return self.invoice_no +' - ' + self.customer.name +' - '+ str(self.due_amount)
+    
+    
+class ChequeStore(models.Model):
+    class cheque_status(models.IntegerChoices):
+        RECEIVED = 1, 'Received'
+        DEPOSITED = 2, 'Cheque Deposited'
+        HONORED = 3, 'Honored'
+        DISHONORED = 4, 'Dishonored'
+        CANCELED = 5, 'Canceled'
+    
+    alias_id = models.TextField(default=generate_slugify_id, max_length=10, unique=True, editable=False)
+    branch = models.ForeignKey(Branch, on_delete=models.CASCADE, blank=False, null=False)
+    customer = models.ForeignKey(Customer, on_delete=models.PROTECT, blank=False, null=False)
+    received_date = models.DateField(blank=False, null=False)
+    cheque_image = models.ImageField(upload_to='cheque_images/', null=True, blank=False)
+    cheque_date = models.DateField(null=True, blank=True)
+    cheque_amount = models.DecimalField(max_digits=18, decimal_places=4)
+    cheque_detail = models.TextField(null=False, blank=False, default='')
+    cheque_status = models.IntegerField(choices=cheque_status.choices, default=cheque_status.RECEIVED)
+    Notes = models.TextField(null=False, blank=False, default='')
+    isActive = models.BooleanField(default=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    updated_by = models.ForeignKey(User, on_delete=models.SET_NULL,null=True)
+    version = models.IntegerField(default=1)
+
+    class Meta:
+        db_table = 'cheque_store'
+        verbose_name = 'Cheque Store'
+        verbose_name_plural = 'Cheque Stores'
+
+    def __str__(self):
+        return self.alias_id
+
+
+class InvoiceChequeMap(models.Model):
+    branch = models.ForeignKey(Branch, on_delete=models.CASCADE, blank=False, null=False)
+    creditinvoice = models.ForeignKey(CreditInvoice, on_delete=models.CASCADE)  # Fixed
+    cheque_store = models.ForeignKey(ChequeStore, on_delete=models.CASCADE, related_name='invoice_cheques')
+    adjusted_amount = models.DecimalField(max_digits=18, decimal_places=4)
+    updated_at = models.DateTimeField(auto_now=True)
+    updated_by = models.ForeignKey(User, on_delete= models.SET_NULL, null=True)
+    version = models.IntegerField(default=1)
+
+    class Meta:
+        db_table = 'invoice_cheque_map'
+        verbose_name = 'Invoice Cheque Map'
+        verbose_name_plural = 'Invoice Cheque Maps'
+
+    def __str__(self):
+        return str(self.id)
