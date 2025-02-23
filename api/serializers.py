@@ -1,9 +1,10 @@
-
+from django.db import models
 from rest_framework import serializers
 from .models import (Company, Branch, ChequeStore, InvoiceChequeMap, 
                      Customer, CreditInvoice)
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.utils import timezone
+from decimal import Decimal
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
@@ -113,6 +114,15 @@ class ChequeStoreSerializer(serializers.ModelSerializer):
     customer = serializers.SlugRelatedField(slug_field='alias_id', queryset=Customer.objects.all())
     customer_name = serializers.CharField(source='customer.name', read_only=True)
 
+    sum_adjustment = serializers.SerializerMethodField(read_only=True)  # Changed to method field
+    
+    # ... keep other existing fields ...
+
+    def get_sum_adjustment(self, obj):
+        return obj.invoice_cheques.aggregate(
+            total=models.Sum('adjusted_amount')
+        )['total'] or Decimal('0.0000')
+
     def to_representation(self, instance):
         representation = super().to_representation(instance)
         if self.context.get('include_invoice_cheques'):
@@ -124,7 +134,7 @@ class ChequeStoreSerializer(serializers.ModelSerializer):
     class Meta:
         model = ChequeStore
         fields = ('alias_id', 'branch', 'customer', 'customer_name','received_date', 'cheque_date'
-                  , 'cheque_amount','cheque_detail', 'cheque_status', 'Notes'
+                  , 'cheque_amount','cheque_detail', 'cheque_status', 'Notes', 'sum_adjustment'
                     , 'updated_at', 'updated_by', 'invoice_cheques', 'version')
         read_only_fields = ( 'version', 'updated_at', 'updated_by')
 
