@@ -50,8 +50,9 @@ class Customer(models.Model):
         max_length=10,
         unique=True,
         editable=False,
-        default=generate_alias_id()
-    )
+        default=generate_slugify_id
+    ) 
+    branch = models.ForeignKey(Branch, on_delete=models.PROTECT, blank=False, null=True) 
     name = models.TextField()
     is_parent = models.BooleanField(default=False)
     parent = models.ForeignKey(
@@ -64,6 +65,11 @@ class Customer(models.Model):
     grace_days = models.IntegerField(default=0, null=True)
     address = models.TextField(blank=True, null=True)
     phone = models.TextField(blank=True, null=True)
+    is_active = models.BooleanField(
+        default=True,
+        verbose_name="Active Status",
+        help_text="Designates whether this customer should be treated as active"
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -85,7 +91,7 @@ class CreditInvoice(models.Model):
     due_amount = models.DecimalField(max_digits=18, decimal_places=4)
     payment_grace_days = models.IntegerField(default=0)
     invoice_image = models.ImageField(upload_to='invoices/', null=True)
-    status = models.BooleanField(default=True)
+    status = models.BooleanField(default=True)  # this will be inactive
     updated_at = models.DateTimeField(auto_now=True)
     updated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     version = models.IntegerField(default=1)
