@@ -151,4 +151,20 @@ class InvoiceChequeMap(models.Model):
         verbose_name_plural = 'Invoice Cheque Maps'
 
     def __str__(self):
-        return str(self.id)
+        return str(self.creditinvoice + " : "+ self.cheque_store)
+    
+class MasterClaim(models.Model):
+    branch = models.ForeignKey(Branch, on_delete=models.PROTECT, blank=False, null=False)
+    alias_id = models.TextField(default=generate_slugify_id, max_length=10, unique=True, editable=False)
+    claim_name = models.TextField(blank=False, null=False)
+    is_active = models.BooleanField(default=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    updated_by = models.ForeignKey(User, on_delete= models.SET_NULL, null=True)
+    version = models.IntegerField(default=1)
+    class Meta:
+        db_table = 'Master_Claim'
+        verbose_name = 'Master Claim'
+        verbose_name_plural = 'Master Claims'
+
+    def __str__(self):
+        return str(self.claim_name)

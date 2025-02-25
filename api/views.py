@@ -5,11 +5,11 @@ from rest_framework.response import Response
 from django.db import transaction, IntegrityError
 from rest_framework.permissions import IsAuthenticated
 from .models import (Company, Branch, Customer, CreditInvoice, 
-                     ChequeStore, InvoiceChequeMap)
+                     ChequeStore, InvoiceChequeMap, MasterClaim)
 from .serializers import (CustomTokenObtainPairSerializer, CompanySerializer, 
                           BranchSerializer, CreditInvoiceSerializer, 
                           CustomerSerializer, ChequeStoreSerializer,
-                          InvoiceChequeMapSerializer)
+                          InvoiceChequeMapSerializer, MasterClaimSerializer)
 
 from rest_framework_simplejwt.views import TokenObtainPairView
 from django.shortcuts import get_object_or_404
@@ -258,3 +258,40 @@ class InvoiceChequeMapViewSet(viewsets.ModelViewSet):
         if int(request.data.get('version')) != instance.version:
             return Response({'error': 'Version conflict'}, status=status.HTTP_409_CONFLICT)
         return super().update(request, *args, **kwargs)
+    
+
+
+
+class MasterClaimViewSet(viewsets.ModelViewSet):
+    queryset = MasterClaim.objects.all()
+    serializer_class = MasterClaimSerializer
+    lookup_field = 'alias_id'  
+
+    def get_queryset(self):
+        branch = self.request.query_params.get('branch', None)
+        if branch:
+            return MasterClaim.objects.filter(branch__alias_id=branch)
+        return self.queryset #MasterClaim.objects.all()
+
+    @transaction.atomic
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+    @transaction.atomic
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        return Response(serializer.data)
+
+    # @transaction.atomic
+    # def destroy(self, request, *args, **kwargs):
+    #     instance = self.get_object()
+    #     self.perform_destroy(instance)
+    #     return Response(status=status.HTTP_204_NO_CONTENT)

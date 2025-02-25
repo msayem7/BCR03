@@ -1,7 +1,7 @@
 from django.db import models
 from rest_framework import serializers
 from .models import (Company, Branch, ChequeStore, InvoiceChequeMap, 
-                     Customer, CreditInvoice)
+                     Customer, CreditInvoice, MasterClaim)
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.utils import timezone
 from decimal import Decimal
@@ -151,3 +151,13 @@ class ChequeStoreSerializer(serializers.ModelSerializer):
         return data
     
 
+
+class MasterClaimSerializer(serializers.ModelSerializer):
+    branch = serializers.SlugRelatedField(
+        slug_field='alias_id',
+        queryset=Branch.objects.all(),
+        required=True
+    )
+    class Meta:
+        model = MasterClaim
+        fields = ['alias_id', 'branch', 'claim_name', 'is_active', 'updated_at', 'updated_by', 'version']
