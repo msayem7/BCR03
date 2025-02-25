@@ -50,7 +50,11 @@ class BranchSerializer(serializers.ModelSerializer):
    
 #-----------------------------
 class CustomerSerializer(serializers.ModelSerializer):
-
+    branch = serializers.SlugRelatedField(
+        slug_field='alias_id',
+        queryset=Branch.objects.all(),
+        required=True
+    )
     parent = serializers.SlugRelatedField(
         slug_field='alias_id',
         queryset=Customer.objects.all(),
@@ -58,11 +62,15 @@ class CustomerSerializer(serializers.ModelSerializer):
         allow_null=True
     )
     parent_name = serializers.CharField(source='parent.name', read_only=True)
-
+    
+    is_active = serializers.BooleanField(
+        required=False,  # Make field optional in requests
+        default=True     # Set default for serializer validation
+    )
     class Meta:
         model = Customer
-        fields = ['alias_id', 'name', 'is_parent', 'parent'
-                  , 'parent_name','grace_days', 'address', 'phone', 'created_at', 'updated_at']
+        fields = ['alias_id', 'branch','name', 'is_parent', 'parent'
+                  , 'parent_name','grace_days', 'address', 'phone','is_active', 'created_at', 'updated_at']
         read_only_fields = ['alias_id', 'created_at', 'updated_at']
         
         # extra_kwargs = {
@@ -70,7 +78,6 @@ class CustomerSerializer(serializers.ModelSerializer):
         # }
         
 class CreditInvoiceSerializer(serializers.ModelSerializer):
-
     branch = serializers.SlugRelatedField(slug_field='alias_id', queryset=Branch.objects.all())
     customer = serializers.SlugRelatedField(slug_field='alias_id', queryset=Customer.objects.all())
     payment_grace_days = serializers.IntegerField(read_only=True)
@@ -142,4 +149,5 @@ class ChequeStoreSerializer(serializers.ModelSerializer):
         if data['received_date'] > timezone.now().date():
             raise serializers.ValidationError("Receiving date cannot be in the future")
         return data
+    
 
