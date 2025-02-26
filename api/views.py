@@ -5,17 +5,27 @@ from rest_framework.response import Response
 from django.db import transaction, IntegrityError
 from rest_framework.permissions import IsAuthenticated
 from .models import (Company, Branch, Customer, CreditInvoice, 
-                     ChequeStore, InvoiceChequeMap, MasterClaim)
+                     ChequeStore, InvoiceChequeMap, MasterClaim,
+                     CustomerClaim)
 from .serializers import (CustomTokenObtainPairSerializer, CompanySerializer, 
                           BranchSerializer, CreditInvoiceSerializer, 
                           CustomerSerializer, ChequeStoreSerializer,
-                          InvoiceChequeMapSerializer, MasterClaimSerializer)
+                          InvoiceChequeMapSerializer, MasterClaimSerializer,
+                          CustomerClaimSerializer, UserSerializer)
 
 from rest_framework_simplejwt.views import TokenObtainPairView
 from django.shortcuts import get_object_or_404
 
 from api import serializers
 
+
+from rest_framework.decorators import api_view, permission_classes
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def user_detail(request):
+    serializer = UserSerializer(request.user)
+    return Response(serializer.data)
 
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
@@ -295,3 +305,27 @@ class MasterClaimViewSet(viewsets.ModelViewSet):
     #     instance = self.get_object()
     #     self.perform_destroy(instance)
     #     return Response(status=status.HTTP_204_NO_CONTENT)
+
+class CustomerClaimViewSet(viewsets.ModelViewSet):
+    queryset = CustomerClaim.objects.all()
+    serializer_class = CustomerClaimSerializer
+    lookup_field = 'alias_id'
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        branch = self.request.query_params.get('branch')
+        invoice = self.request.query_params.get('invoice')
+
+        if branch:
+            queryset = queryset.filter(branch__alias_id=branch)
+        if invoice:
+            queryset = queryset.filter(creditinvoice__alias_id=invoice)
+        return queryset
+
+    @transaction.atomic
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)
+
+    @transaction.atomic
+    def update(self, request, *args, **kwargs):
+        return super().update(request, *args, **kwargs)

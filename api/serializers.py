@@ -1,11 +1,18 @@
 from django.db import models
 from rest_framework import serializers
 from .models import (Company, Branch, ChequeStore, InvoiceChequeMap, 
-                     Customer, CreditInvoice, MasterClaim)
+                     Customer, CreditInvoice, MasterClaim, CustomerClaim)
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.utils import timezone
 from decimal import Decimal
+from django.contrib.auth.models import User
 
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'email', 'first_name', 'last_name']
+        read_only_fields = ['id']
+        
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
         data = super().validate(attrs)
@@ -161,3 +168,13 @@ class MasterClaimSerializer(serializers.ModelSerializer):
     class Meta:
         model = MasterClaim
         fields = ['alias_id', 'branch', 'claim_name', 'is_active', 'updated_at', 'updated_by', 'version']
+
+class CustomerClaimSerializer(serializers.ModelSerializer):
+    branch = serializers.SlugRelatedField(slug_field='alias_id', queryset=Branch.objects.all())
+    creditinvoice = serializers.SlugRelatedField(slug_field='alias_id', queryset=CreditInvoice.objects.all())
+    claim = serializers.SlugRelatedField(slug_field='alias_id', queryset=MasterClaim.objects.all())
+
+    class Meta:
+        model = CustomerClaim
+        fields = ['alias_id', 'branch', 'creditinvoice', 'claim', 'claim_amount', 'updated_at', 'updated_by', 'version']
+        read_only_fields = ['alias_id', 'updated_at', 'updated_by', 'version']
