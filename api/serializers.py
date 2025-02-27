@@ -1,4 +1,4 @@
-from django.db import models
+from django.db import models, transaction
 from rest_framework import serializers
 from .models import (Company, Branch, ChequeStore, InvoiceChequeMap, 
                      Customer, CreditInvoice, MasterClaim, CustomerClaim)
@@ -6,13 +6,15 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.utils import timezone
 from decimal import Decimal
 from django.contrib.auth.models import User
+from django.shortcuts import get_object_or_404
+
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['id', 'username', 'email', 'first_name', 'last_name']
         read_only_fields = ['id']
-        
+
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
         data = super().validate(attrs)
@@ -85,6 +87,9 @@ class CustomerSerializer(serializers.ModelSerializer):
         # }
         
 class CreditInvoiceSerializer(serializers.ModelSerializer):
+    claims = serializers.JSONField(write_only=True, required=False)
+
+
     branch = serializers.SlugRelatedField(slug_field='alias_id', queryset=Branch.objects.all())
     customer = serializers.SlugRelatedField(slug_field='alias_id', queryset=Customer.objects.all())
     payment_grace_days = serializers.IntegerField(read_only=True)
@@ -94,13 +99,55 @@ class CreditInvoiceSerializer(serializers.ModelSerializer):
     class Meta:
         model = CreditInvoice
         fields = ('alias_id', 'branch', 'invoice_no', 'customer','customer_name', 'transaction_date'
-                  ,'due_amount', 'payment_grace_days', 'status', 'version'
+                  ,'due_amount', 'payment_grace_days', 'status', 'claims','version'
                   )
         read_only_fields = ('alias_id', 'version', 'updated_at', 'updated_by')
 
-    def create(self, validated_data):
+    def create(self, validated_data):      
+        claims_data = validated_data.pop('claims', [])
         validated_data['payment_grace_days'] = validated_data['customer'].grace_days
-        return super().create(validated_data)
+        instance = super().create(validated_data)
+        self._handle_claims(instance, claims_data)
+        return instance
+    
+    def update(self, instance, validated_data):
+        claims_data = validated_data.pop('claims', [])
+        instance = super().update(instance, validated_data)
+        self._handle_claims(instance, claims_data)
+        return instance
+    
+    def _handle_claims(self, instance, claims_data):
+        with transaction.atomic():
+            existing_claims = instance.customerclaim_set.all()
+            existing_claims_map = {str(c.claim.alias_id): c for c in existing_claims}
+            
+            # Process claims
+            seen_claims = set()
+            for claim in claims_data:
+                claim_obj = get_object_or_404(MasterClaim, alias_id=claim['alias_id'])
+                
+                # Update existing or create new
+                if claim.get('existing'):
+                    customer_claim = existing_claims_map.get(claim['alias_id'])
+                    if customer_claim:
+                        customer_claim.claim_amount = claim['claim_amount']
+                        customer_claim.version += 1
+                        customer_claim.save()
+                        seen_claims.add(str(customer_claim.alias_id))
+                else:
+                    CustomerClaim.objects.create(
+                        creditinvoice=instance,
+                        claim=claim_obj,
+                        claim_amount=claim['claim_amount'],
+                        branch=instance.branch,
+                        updated_by=self.context['request'].user,
+                        version=1
+                    )
+            
+            # Delete claims not present in submission
+            for claim in existing_claims:
+                if str(claim.alias_id) not in seen_claims:
+                    claim.delete()
 
     # def update(self, instance, validated_data):
     #     if 'customer' in validated_data:
@@ -108,8 +155,7 @@ class CreditInvoiceSerializer(serializers.ModelSerializer):
 
     #     # validated_data['version'] = str(int(instance['version'])+1)
     #     return super().update(instance, validated_data)
-    
-   
+
     # ------------------------------------------------
 class InvoiceChequeMapSerializer(serializers.ModelSerializer):
     creditinvoice = serializers.SlugRelatedField(slug_field='alias_id', queryset=CreditInvoice.objects.all())
@@ -173,8 +219,9 @@ class CustomerClaimSerializer(serializers.ModelSerializer):
     branch = serializers.SlugRelatedField(slug_field='alias_id', queryset=Branch.objects.all())
     creditinvoice = serializers.SlugRelatedField(slug_field='alias_id', queryset=CreditInvoice.objects.all())
     claim = serializers.SlugRelatedField(slug_field='alias_id', queryset=MasterClaim.objects.all())
+    claim_name = serializers.CharField(source='claim.claim_name', read_only=True)
 
     class Meta:
         model = CustomerClaim
-        fields = ['alias_id', 'branch', 'creditinvoice', 'claim', 'claim_amount', 'updated_at', 'updated_by', 'version']
+        fields = ['alias_id', 'branch', 'creditinvoice', 'claim', 'claim_name', 'claim_amount', 'updated_at', 'updated_by', 'version']
         read_only_fields = ['alias_id', 'updated_at', 'updated_by', 'version']

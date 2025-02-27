@@ -326,6 +326,14 @@ class CustomerClaimViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         return super().create(request, *args, **kwargs)
 
+    # @transaction.atomic
+    # def update(self, request, *args, **kwargs):
+    #     return super().update(request, *args, **kwargs)
+    
     @transaction.atomic
     def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        if int(request.data.get('version')) != instance.version:
+            return Response({'error': 'Version conflict'}, status=status.HTTP_409_CONFLICT)
+        
         return super().update(request, *args, **kwargs)

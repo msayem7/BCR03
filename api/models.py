@@ -186,3 +186,4 @@ class CustomerClaim(models.Model):
 
     def __str__(self):
         return str(self.creditinvoice.invoice_no + " : " + self.claim.claim_name + " : "+ self.claim_amount)
+
