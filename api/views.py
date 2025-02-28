@@ -1,3 +1,21 @@
+
+#reports
+from rest_framework.decorators import action
+from django.db.models import Sum, Q, F
+from rest_framework.views import APIView
+from rest_framework.viewsets import ViewSet
+import io
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import letter
+from reportlab.platypus import Table, TableStyle
+from reportlab.lib import colors
+from openpyxl import Workbook
+from django.http import HttpResponse
+from datetime import datetime
+from django.db.models import DecimalField, Sum, Case, When, Value, IntegerField
+from decimal import Decimal
+
+
 import json
 from django_filters import rest_framework as filters
 from rest_framework import viewsets, status
@@ -18,8 +36,8 @@ from django.shortcuts import get_object_or_404
 
 from api import serializers
 
+from rest_framework.decorators import api_view, permission_classes, action
 
-from rest_framework.decorators import api_view, permission_classes
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -337,3 +355,169 @@ class CustomerClaimViewSet(viewsets.ModelViewSet):
             return Response({'error': 'Version conflict'}, status=status.HTTP_409_CONFLICT)
         
         return super().update(request, *args, **kwargs)
+
+
+# ------------ Cheque Report ------------
+
+class CIvsChequeReportView(ViewSet):
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        # Reuse the list method's logic to generate report data
+        return self.list(self.request).data  # Returns the report data list
+
+    def list(self, request):
+        branch_id = request.query_params.get('branch')
+        date_from = request.query_params.get('date_from')
+        date_to = request.query_params.get('date_to')
+        min_amount = request.query_params.get('min_amount')
+        max_amount = request.query_params.get('max_amount')
+
+
+
+        
+
+
+        # Base query
+        invoices = CreditInvoice.objects.select_related(
+            'branch', 'customer'
+        ).prefetch_related('customerclaim_set')
+
+        # Apply filters
+        if branch_id:
+            invoices = invoices.filter(branch__alias_id=branch_id)
+        if date_from and date_to:
+            invoices = invoices.filter(transaction_date__range=[date_from, date_to])
+        if min_amount:
+            invoices = invoices.filter(due_amount__gte=min_amount)
+        if max_amount:
+            invoices = invoices.filter(due_amount__lte=max_amount)
+
+        report_data = []
+        for invoice in invoices:
+            # Calculate claims
+            claims_total = invoice.customerclaim_set.aggregate(
+                total=Sum('claim_amount')
+            )['total'] or Decimal('0.0000')
+
+            # Get cheque data
+
+            cheque_data = ChequeStore.objects.filter(
+                Q(cheque_status=ChequeStore.ChequeStatus.RECEIVED) |
+                Q(cheque_status=ChequeStore.ChequeStatus.DEPOSITED) |
+                Q(cheque_status=ChequeStore.ChequeStatus.HONORED),
+                invoice_cheques__creditinvoice=invoice
+            ).aggregate(
+                total_received=Sum('cheque_amount'),
+                total_cleared=Sum(
+                    Case(
+                        When(cheque_status=ChequeStore.ChequeStatus.HONORED, 
+                            then='cheque_amount'),
+                        default=0,
+                        output_field=DecimalField()
+                    )
+                )
+            )
+
+            report_data.append({
+                'branch': invoice.branch.name,
+                'invoice_no': invoice.invoice_no,
+                'transaction_date': invoice.transaction_date,
+                'payment_grace_days': invoice.payment_grace_days,
+                'due_amount': invoice.due_amount,
+                'claims': claims_total,
+                'net_sales': invoice.due_amount - claims_total,
+                'received_cheques': cheque_data['total_received'] or 0,
+                'cleared_cheques': cheque_data['total_cleared'] or 0,
+                'total_due': (invoice.due_amount - claims_total - 
+                             (cheque_data['total_received'] or 0) -
+                             (cheque_data['total_cleared'] or 0))
+            })
+
+        return Response(report_data)
+    
+
+    @action(detail=False, methods=['get'])
+    def export_pdf(self, request):
+        # PDF generation logic using ReportLab
+        response = HttpResponse(content_type='application/pdf')
+        buffer = io.BytesIO()
+
+        p = canvas.Canvas(buffer, pagesize=letter)
+        width, height = letter
+
+        # Header
+        p.setFont("Helvetica-Bold", 16)
+        p.drawString(50, height-50, f"CI vs Cheque Report - {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+        
+        # Data table
+        data = [['Invoice', 'Date', 'Due Amount', 'Claims', 'Net Sales', 'Total Due']]
+
+         # Get report data
+        report_data = self.list(request).data
+
+        # Add data to PDF table
+        for item in report_data:
+            data.append([
+                item['invoice_no'],
+                item['transaction_date'].strftime('%Y-%m-%d'),  # Ensure datetime object
+                str(item['due_amount']),
+                str(item['claims']),
+                str(item['net_sales']),
+                str(item['total_due'])
+            ])
+
+        table = Table(data)
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), colors.grey),
+            ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke),
+            ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0,0), (-1,0), 12),
+            ('BOTTOMPADDING', (0,0), (-1,0), 12),
+            ('BACKGROUND', (0,1), (-1,-1), colors.beige),
+            ('GRID', (0,0), (-1,-1), 1, colors.black)
+        ]))
+
+        table.wrapOn(p, width-100, height)
+        table.drawOn(p, 50, height-150)
+
+        p.showPage()
+        p.save()
+
+        pdf = buffer.getvalue()
+        buffer.close()
+        response.write(pdf)
+        return response
+    
+
+    @action(detail=False, methods=['get'])
+    def export_excel(self, request):
+        response = HttpResponse(
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        response['Content-Disposition'] = 'attachment; filename=ci_vs_cheque.xlsx'
+
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Report"
+
+        # Add headers
+        headers = ['Invoice No', 'Transaction Date', 'Due Amount', 'Claims', 'Net Sales', 'Total Due']
+        ws.append(headers)
+
+        report_data = self.list(request).data  # List of dictionaries
+
+        # Add data
+        for item in report_data:
+            ws.append([
+                item['invoice_no'],          # Access via key
+                item['transaction_date'].strftime('%d-%m-%Y'),
+                item['due_amount'],
+                item['claims'],
+                item['net_sales'],
+                item['total_due']
+            ])
+
+        wb.save(response)
+        return response

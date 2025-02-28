@@ -105,12 +105,11 @@ class CreditInvoice(models.Model):
     
     
 class ChequeStore(models.Model):
-    class cheque_status(models.IntegerChoices):
+    class ChequeStatus(models.IntegerChoices):
         RECEIVED = 1, 'Received'
-        DEPOSITED = 2, 'Cheque Deposited'
+        DEPOSITED = 2, 'Deposited'
         HONORED = 3, 'Honored'
-        DISHONORED = 4, 'Dishonored'
-        CANCELED = 5, 'Canceled'
+        BOUNCED = 4, 'Bounced'    
     
     alias_id = models.TextField(default=generate_slugify_id, max_length=10, unique=True, editable=False)
     branch = models.ForeignKey(Branch, on_delete=models.CASCADE, blank=False, null=False)
@@ -120,7 +119,7 @@ class ChequeStore(models.Model):
     cheque_date = models.DateField(null=True, blank=True)
     cheque_amount = models.DecimalField(max_digits=18, decimal_places=4)
     cheque_detail = models.TextField(null=False, blank=False, default='')
-    cheque_status = models.IntegerField(choices=cheque_status.choices, default=cheque_status.RECEIVED)
+    cheque_status = models.IntegerField(choices=ChequeStatus.choices, default=ChequeStatus.RECEIVED)
     Notes = models.TextField(null=False, blank=False, default='')
     isActive = models.BooleanField(default=True)
     updated_at = models.DateTimeField(auto_now=True)
