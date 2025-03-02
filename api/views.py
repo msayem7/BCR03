@@ -428,7 +428,7 @@ class CIvsChequeReportView(ViewSet):
             'transaction_date',
             'payment_grace_days',
             'due_amount',
-            'total_claim',git 
+            'total_claim',
             'net_sales',
             'received',
             'cleared',
